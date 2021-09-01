@@ -1,9 +1,11 @@
 mod ip_finder;
 
 use anyhow::Result;
-use axum::{handler::get, response::Html, Router, extract::ConnectInfo};
+use axum::{handler::get, Router, extract::ConnectInfo};
 use std::net::SocketAddr;
 use tracing::{debug, Level};
+
+use crate::ip_finder::{IpFinder, ImageStore};
 
 #[tokio::main]
 pub async fn main() -> Result<()> {

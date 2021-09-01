@@ -1,3 +1,6 @@
+use std::path::PathBuf;
+use anyhow::Result;
+use tokio::fs;
 use ip2location::DB;
 
 pub struct IpFinder {
@@ -27,12 +30,44 @@ impl IpFinder {
     }
 }
 
-/*
-let make_svc = make_service_fn(move |conn: &AddrStream| {
-        let addr = conn.remote_addr();
-        async move {
-            let addr = addr.clone();
-            Ok::<_, Infallible>(service_fn(move |req| hello(req, addr.clone())))
+/// ### Image Store
+/// stores and reads images in a folder
+#[derive(Debug)]
+pub struct ImageStore {
+    pub path: PathBuf,
+}
+
+impl ImageStore {
+    pub fn new(path: PathBuf) -> Self {
+        ImageStore { path }
+    }
+
+    pub async fn store_image(&self, name: &str, image: Vec<u8>, country_short: Option<String>) -> Result<()> {
+        if let Some(country_short) = country_short {
+            let path = self.path.join(format!("{}-{}", country_short, name));
+            fs::write(path, image).await?;
+        } else {
+            let path = self.path.join(name);
+            fs::write(path, image).await?;
         }
-    });
-*/
+
+        Ok(())
+    }
+
+    pub async fn read_image(&self, name: &str, country_short: Option<String>) -> Result<Vec<u8>> {
+        let path = self.path.join(name);
+
+        if path.exists() {
+            if let Some(country_short) = country_short {
+                let path = self.path.join(format!("{}-{}", country_short, name));
+                if path.exists() {
+                    return Ok(fs::read(path).await?);
+                }
+            } else {
+                return Ok(fs::read(path).await?);
+            }
+        }
+
+        Err(anyhow::anyhow!("Image not found"))
+    }
+}
