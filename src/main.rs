@@ -11,7 +11,7 @@ use axum::{
     Router,
 };
 use std::{net::SocketAddr, path::PathBuf, str::FromStr, time::Duration};
-use tracing::Level;
+use tracing::{info, Level};
 
 use std::convert::Infallible;
 use tower::{BoxError, ServiceBuilder};
@@ -21,9 +21,7 @@ use crate::ip_finder::{ImageStore, IpFinder};
 
 #[tokio::main]
 pub async fn main() -> Result<()> {
-    tracing_subscriber::fmt()
-        .with_max_level(Level::INFO)
-        .init();
+    tracing_subscriber::fmt().with_max_level(Level::INFO).init();
 
     App::new().run().await
 }
@@ -37,6 +35,7 @@ impl App {
 
     pub async fn run(&self) -> Result<()> {
         let db = ImageStore::new(PathBuf::from_str("./images")?);
+        let finder = IpFinder::new();
 
         let app = Router::new()
             .route("/save", post(save_img))
@@ -46,6 +45,7 @@ impl App {
                     .timeout(Duration::from_secs(10))
                     .layer(TraceLayer::new_for_http())
                     .layer(AddExtensionLayer::new(db))
+                    .layer(AddExtensionLayer::new(finder))
                     .into_inner(),
             )
             .handle_error(|error: BoxError| {
@@ -78,8 +78,10 @@ impl App {
 async fn get_img(
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     Extension(db): Extension<ImageStore>,
+    Extension(finder): Extension<IpFinder>,
 ) -> String {
-    if let Ok(img) = db.read_image("1.txt", Some("IN")).await {
+    let country_short = finder.find_country_short(addr.to_string().as_str()).await;
+    if let Ok(img) = db.read_image("1.txt", country_short).await {
         return format!("{:?}", img);
     }
     format!("IP: {}\nNot Found {}", addr, "1.txt")
