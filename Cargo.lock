@@ -540,7 +540,10 @@ dependencies = [
  "anyhow",
  "axum",
  "ip2location",
+ "serde",
  "tokio",
+ "tower",
+ "tower-http",
  "tracing",
  "tracing-subscriber",
 ]
@@ -770,6 +773,7 @@ dependencies = [
  "pin-project",
  "tower-layer",
  "tower-service",
+ "tracing",
 ]
 
 [[package]]

@@ -1,7 +1,9 @@
-use std::path::PathBuf;
+#![allow(dead_code)]
 use anyhow::Result;
-use tokio::fs;
 use ip2location::DB;
+use tracing::{info, warn};
+use std::path::PathBuf;
+use tokio::fs;
 
 pub struct IpFinder {
     db: DB,
@@ -32,7 +34,7 @@ impl IpFinder {
 
 /// ### Image Store
 /// stores and reads images in a folder
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ImageStore {
     pub path: PathBuf,
 }
@@ -42,7 +44,12 @@ impl ImageStore {
         ImageStore { path }
     }
 
-    pub async fn store_image(&self, name: &str, image: Vec<u8>, country_short: Option<String>) -> Result<()> {
+    pub async fn store_image(
+        &self,
+        name: &str,
+        image: Vec<u8>,
+        country_short: Option<&str>,
+    ) -> Result<()> {
         if let Some(country_short) = country_short {
             let path = self.path.join(format!("{}-{}", country_short, name));
             fs::write(path, image).await?;
@@ -50,22 +57,24 @@ impl ImageStore {
             let path = self.path.join(name);
             fs::write(path, image).await?;
         }
-
         Ok(())
     }
 
-    pub async fn read_image(&self, name: &str, country_short: Option<String>) -> Result<Vec<u8>> {
-        let path = self.path.join(name);
-
+    pub async fn read_image(&self, name: &str, country_short: Option<&str>) -> Result<Vec<u8>> {
+        let path = self.path.join(name).join(name);
         if path.exists() {
             if let Some(country_short) = country_short {
-                let path = self.path.join(format!("{}-{}", country_short, name));
+                let path = self.path.join(name).join(format!("{}-{}", country_short, name));
+                info!("Country path: {:?}", path);
                 if path.exists() {
                     return Ok(fs::read(path).await?);
                 }
             } else {
+                info!("path: {:?}", path);
                 return Ok(fs::read(path).await?);
             }
+        } else {
+            warn!("Image not found: {:?}, Country: {:?}", name, country_short);
         }
 
         Err(anyhow::anyhow!("Image not found"))
