@@ -11,7 +11,7 @@ use axum::{
     Router,
 };
 use std::{net::SocketAddr, path::PathBuf, str::FromStr, time::Duration};
-use tracing::{info, Level};
+use tracing::{Level};
 
 use std::convert::Infallible;
 use tower::{BoxError, ServiceBuilder};
@@ -38,8 +38,8 @@ impl App {
         let finder = IpFinder::new();
 
         let app = Router::new()
-            .route("/save", post(save_img))
-            .route("/:img", get(get_img))
+            .route("/save", post(save_file))
+            .route("/:img", get(get_file))
             .layer(
                 ServiceBuilder::new()
                     .timeout(Duration::from_secs(10))
@@ -75,7 +75,7 @@ impl App {
     }
 }
 
-async fn get_img(
+async fn get_file(
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     Extension(db): Extension<ImageStore>,
     Extension(finder): Extension<IpFinder>,
@@ -87,7 +87,7 @@ async fn get_img(
     format!("IP: {}\nNot Found {}", addr, "1.txt")
 }
 
-async fn save_img(ConnectInfo(addr): ConnectInfo<SocketAddr>) -> String {
+async fn save_file(ConnectInfo(addr): ConnectInfo<SocketAddr>) -> String {
     format!("Hello {}", addr)
 }
 
